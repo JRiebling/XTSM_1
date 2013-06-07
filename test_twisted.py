@@ -11,7 +11,7 @@ TODO:
     redirect stdio to console
     execute command queue items on schedule
 
-@author: Nate, Jed
+@author: Nate
 """
 from twisted.internet import wxreactor, defer
 wxreactor.install()
@@ -26,6 +26,7 @@ import pdb
 import heapq
 
 active_xtsm = ''
+port = int(sys.argv[1])
 
 class HTTPRequest(BaseHTTPRequestHandler):
     """
@@ -97,34 +98,10 @@ class CommandProtocol(protocol.Protocol):
                 self.request.update({'ctime':self.ctime,'protocol':self})
                 # record where this request is coming from
                 self.factory.clientManager.elaborateLog(self.peer,self.request)
-                # attempt to extract priority of request from header
-                """                
-                try:
-                    self.priority=self.dataHTTP.headers['content-type'].split('priority=')[1][:1]
-                except: return # if unsuccessful, try again until header is completely received
-                """
             except: return  # if unsuccessful, wait for next packet and try again
         # if we made it to here, the header has been received
         # if the entirety of message not yet received, append this fragment and continue
-        """if not hasattr(self, 'priority'):
-            # server assigns a priority based upon header properties
-            self.priority = self.priorityQueue.get_priority()
-        if requests != 0:
-            # if this is not the first pass, then this item is at the top of the priority queue. so we eliminate it.
-            self.priorityQueue.pop(headerItemsforCommand, self.priority)
-            """
         if self.mlength > len(self.alldata):
-            """
-            # puts in a new request to the priority queue
-            self.priorityQueue.put_on_queue(headerItemsforCommand, self.priority)
-            get_data = False
-            while get_data == False:
-                # request stops here until this request has top priority, in which case check_queue returns as True.
-                if self.priorityQueue.check_queue(headerItemsforCommand, self.priority):
-                    get_data = True
-                else:
-                    pass
-            requests += 1"""
             return
         # if we have made it here, this is last fragment of message       
         # mark the 'all data received' time
@@ -417,8 +394,9 @@ class GlabPythonManager():
         # associate the CommandProtocol as a response method on that socket
         self.listener.protocol=CommandProtocol
         # tell the twisted reactor what port to listen on, and which factory to use for response protocols
-        reactor.listenTCP(8083, self.listener)
-        def hello(): print 'Listening on port', 8083
+        global port        
+        reactor.listenTCP(port, self.listener)
+        def hello(): print 'Listening on port', port
         reactor.callWhenRunning(hello)
         # associate the Command Queue and ClienManager with the socket listener
         self.listener.associateCommandQueue(self.commandQueue)
@@ -539,59 +517,6 @@ class GlabPythonManager():
             result_tree = transform(doc)
             stat=str(result_tree)
         return stat
-        
-class Priority_Queue(): #Not in use yet
-    """
-    Creates a priority queue for the server sending/receiving data
-    """
-    def __init__(self):
-        self.priority_1 = []
-        self.priority_2 = []
-        self.priority_3 = []
-        
-    def get_priority(self):
-        #Not Done Yet
-        pass
-        
-    def put_on_queue(self, item, priority):
-        # puts a request on a queue. queue depends on the priority of the request.
-        if priority == 1:
-            heapq.heappush(self.priority_1, item)
-        elif priority == 2:
-            heapq.heappush(self.priority_2, item)
-        elif priority == 3:
-            heapq.heappush(self.priority_3, item)
-        else: print 'Priority out of range'
-        
-    def check_priority(self, item, priority):
-        # checks if request is the highest of its priority and that the above priorities
-        #are empty. if not, request is not allowed to do anything.
-        if priority == 1:
-            if self.priority_1[0] == item:
-                return True
-            else:
-                return False
-        elif priority == 2:
-            if self.priority_1[0] == '' and self.priority_2[0] == item:
-                return True
-            else:
-                return False
-        elif priority == 3:
-            if self.priority_1[0] == '' and self.priority_2[0] == '' and self.priority_3[0] == item:
-                return True
-            else:
-                return False
-        else: print 'Priority out of range'
-        
-    def pop(self, item, priority):
-        # eliminates first item on a queue.
-        if priority == 1:
-            heapq.heappop(self.priority_1, item)
-        elif priority == 2:
-            heapq.heappop(self.priority_2, item)
-        elif priority == 3:
-            heapq.heappop(self.priority_3, item)
-        else: print 'Priority out of range'
 
 # do it all:
 theBeast = GlabPythonManager()
