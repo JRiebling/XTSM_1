@@ -11,7 +11,7 @@ TODO:
     redirect stdio to console
     execute command queue items on schedule
 
-@author: Nate
+@author: Nate, Jed
 """
 from twisted.internet import wxreactor, defer
 wxreactor.install()
@@ -23,7 +23,6 @@ import wx, wx.html
 import uuid, time, sys
 import socket, __main__ as main
 import pdb
-import heapq
 
 active_xtsm = ''
 try:
