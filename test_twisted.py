@@ -26,7 +26,10 @@ import pdb
 import heapq
 
 active_xtsm = ''
-port = int(sys.argv[1])
+try:
+    port = int(sys.argv[1])
+except:
+    port = 8083
 
 class HTTPRequest(BaseHTTPRequestHandler):
     """
