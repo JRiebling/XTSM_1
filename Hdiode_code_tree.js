@@ -301,7 +301,7 @@ function Hdiode_code_tree(html_div, sources) {
 
 function does_nothing() {
 	"use strict";
-	//Filler function
+	//Filler function.
 
 	alert('This button is currently nonfunctional. Please try again later.');
 }
@@ -470,12 +470,12 @@ function post_active_xtsm(arg) {
 	"use strict";
 	//Send active xtsm code to twisted server.
 
-	var transferdata, boundary, active_xtsm;
+	var transferdata, boundary, _active_xtsm;
 	boundary = "--aardvark";
-	active_xtsm = arg.editor.getValue();
+	_active_xtsm = arg.editor.getValue();
 	transferdata = [];
 	transferdata[0] = '--' + boundary + '\n\rContent-Disposition: form-data; name="IDLSocket_ResponseFunction"\n\r\n\r' + 'set_global_variable_from_socket' + '\n\r--' + boundary + '--\n\r';
-	transferdata[1] = '--' + boundary + '\n\rContent-Disposition: form-data; name="post_active_xtsm"\n\r\n\r' + active_xtsm + '\n\r--' + boundary + '--\n\r';
+	transferdata[1] = '--' + boundary + '\n\rContent-Disposition: form-data; name="_active_xtsm"\n\r\n\r' + _active_xtsm + '\n\r--' + boundary + '--\n\r';
 	transferdata[2] = '--' + boundary + '\n\rContent-Disposition: form-data; name="terminator"\n\r\n\r' + 'die' + '\n\r--' + boundary + '--\n\r';
 	transferdata = transferdata.join("");
 	//alert(transferdata);
@@ -502,20 +502,21 @@ function retrieve_active_xtsm(arg) {
 	boundary = '--aardvark';
 	transferdata = [];
 	transferdata[0] = '--' + boundary + '\n\rContent-Disposition: form-data; name="IDLSocket_ResponseFunction"\n\r\n\r' + 'get_global_variable_from_socket' + '\n\r--' + boundary + '--\n\r';
-	transferdata[1] = '--' + boundary + '\n\rContent-Disposition: form-data; name="retrieve_active_xtsm"\n\r\n\r' + 'ACTIVE_XTSM' + '\n\r--' + boundary + '--\n\r';
+	transferdata[1] = '--' + boundary + '\n\rContent-Disposition: form-data; name="variablename"\n\r\n\r' + '_active_xtsm' + '\n\r--' + boundary + '--\n\r';
 	transferdata[2] = '--' + boundary + '\n\rContent-Disposition: form-data; name="terminator"\n\r\n\r' + 'die' + '\n\r--' + boundary + '--\n\r';
 	transferdata = transferdata.join("");
 	//alert(transferdata);
 	$.ajax({
-		url: 'http://localhost:8083',
+		url: 'http://127.0.0.1:8083',
 		type: 'POST',
 		contentType: 'multipart/form-data; boundary=' + boundary,
 		processData: false,
 		data: transferdata,
+		dataType: 'text',
 		success: function (result) {
 			//alert(result);
 			// Eliminates junk string at beginning of message, which was required so that the message would be a string.
-			arg.editor.setValue(result.substr(18));
+			arg.editor.setValue(result);
 		}
 	});
 	if (document.getElementById("compress_on_post_button").checked) {
@@ -528,9 +529,16 @@ function launch_python() {
 	//Launches python twisted server. Server appears under system processes, not user processes.
 	//Cannot interact directly with server launched in this manner, though all predefined functions (such as posting xtsm code) work with this server.
 
-	$.get('launch_python.php', function (data) {
-		alert('got php file');
-	});
+	var url_out, port_out;
+	url_out = '127.0.0.1';
+	port_out = 8083;
+	/*$.ajax({
+		url: url_out + ':8081/MetaViewer/launch_python.php',
+		type: 'POST',
+		data: {port: port_out},
+		success: function (data) {}
+	});*/
+	$.post('launch_python.php', {port: port_out}, function (data) {});
 }
 
 function disable_python_socket() {
@@ -619,7 +627,7 @@ function execute_python() {
 		success: function (result) {
 			var consoleresult, varresult, i, j, newopt, select_length;
 			//Removes variables from results and prints to appropriate textbox.
-			consoleresult = []
+			consoleresult = [];
 			consoleresult[0] = (result.substring(19).split('>Code>'))[0];
 			consoleresult[1] = (result.substring(19).split('>Code>'))[2];
 			consoleresult = consoleresult.join("");
@@ -632,6 +640,7 @@ function execute_python() {
 				document.getElementById('python_variable_list').remove(1);
 			}
 			//Writes new variables to variable list textarea.
+			alert(varresult[1]);
 			for (j = 0; j < varresult.length; j++) {
 				newopt = document.createElement('option');
 				newopt.text = varresult[j];
