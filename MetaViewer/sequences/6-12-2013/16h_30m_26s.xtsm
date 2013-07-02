@@ -1,0 +1,247 @@
+<XTSM Note="Variables Parsed by IDL at Suk 05 18:52:03 2012 in 84.908000 s." expanded="1">                                                                                                                                                                                                                                                                                                                                                  
+
+  <SequenceSelector>sequence="Primary"</SequenceSelector>                                                                                                                                                                                                                                                                                                                                                
+
+  <head expanded="1"><ChannelMap expanded="1">	
+      
+      
+    <TimingGroupData expanded="1">
+				<Description>PXIe-6536 Digital Output Board - 32 channels digital @ 200ns resolution.  Used to clock all analog output groups except two output channels on the PXIe-6124 multifunction card, remaining 29 outputs are for general purpose use in experiment</Description>
+                <Name>PXI1Slot2/port0:3</Name>
+				<ClockedBy>/PXI1Slot2/PXI_Trig7</ClockedBy>
+				<GroupNumber>1</GroupNumber>
+				<ChannelCount>32</ChannelCount>
+				<Scale>5</Scale>
+				<ResolutionBits>1</ResolutionBits>
+        <ClockPeriod>0.0002</ClockPeriod>
+			</TimingGroupData><Channel expanded="1">
+				<Name/>
+				<ChannelName>/PXI1Slot2/PFI2</ChannelName>
+				<Comments>Sample clock to slot6 pxi-6723 - physically wired from output to PFI2</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>1</TimingGroup>
+				<TimingGroupIndex>1</TimingGroupIndex>
+				<ConnectsTo>PFIx/group2 clock</ConnectsTo>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+			</Channel><Channel expanded="1">
+				<Name/>
+				<ChannelName>/PXI1Slot2/PFI3</ChannelName>
+				<Comments>Sample clock to slot7 pxi-6733 - physically wired from output to PFI3</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>1</TimingGroup>
+				<TimingGroupIndex>2</TimingGroupIndex>
+				<ConnectsTo>PFIx/group3 clock</ConnectsTo>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+			</Channel><Channel expanded="1">
+				<Name/>
+				<ChannelName>/PXI1Slot2/PFI1</ChannelName>
+				<Comments>Sample clock from pxie-6536 to slot8 pxi-6733 - physically wired from output 0 to PFI1</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>1</TimingGroup>
+				<TimingGroupIndex>0</TimingGroupIndex>
+				<ConnectsTo>PFIx/group4 clock</ConnectsTo>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+			</Channel>
+            <TimingGroupData expanded="1">
+        <Name>RIO01/sync</Name>
+                <Description>FPGA - based synchronous commands - upper half of the FPGA .vi; master clock source for experiment.  PXI-7951R, slot 5</Description>
+        
+				<ClockedBy>RIO_DelayTrain</ClockedBy>
+        <ClockPeriod>0.0000125</ClockPeriod>
+				<GroupNumber>5</GroupNumber>
+				<ChannelCount>8</ChannelCount>
+				<Scale>5</Scale>
+				<ResolutionBits>1</ResolutionBits>
+			</TimingGroupData><Channel expanded="1">
+				<Name/>
+				<ChannelName>/PXI1Slot2/PXI_Trig7</ChannelName>
+				<Comments/>
+				<TimingSysChannel/>
+				<TimingGroup>5</TimingGroup>
+				<TimingGroupIndex>0</TimingGroupIndex>
+				<ConnectsTo/>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+			</Channel><Channel expanded="1">
+				<Name/>
+				<ChannelName>AIClockTrain</ChannelName>
+				<Comments>Analog Input Sample Clock Signal - clocks the PXIe 6124 analog input sample clock</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>5</TimingGroup>
+				<TimingGroupIndex>1</TimingGroupIndex>
+				<ConnectsTo/>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+			</Channel><Channel expanded="0">
+				<Name/>
+				<ChannelName>FineAOClockTrain</ChannelName>
+				<Comments>Analog Output Sample Clock Signal - clocks the PXIe 6124 analog output sample clock</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>5</TimingGroup>
+				<TimingGroupIndex>2</TimingGroupIndex>
+				<ConnectsTo/>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+			</Channel><Channel expanded="0">
+				<Name/>
+				<ChannelName>FractionalNClockTrain</ChannelName>
+				<Comments>Triggers update of fractional-N synthesizer dividers for oscillator control </Comments>
+				<TimingSysChannel/>
+				<TimingGroup>5</TimingGroup>
+				<TimingGroupIndex>3</TimingGroupIndex>
+				<ConnectsTo/>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+      </Channel><TimingGroupData expanded="1">
+        <Name>RIO01/delaytrain</Name>
+                <Description>FPGA - based delay train generator - upper half of the FPGA .vi; master clock source for experiment.  PXI-7951R, slot 5</Description>
+        <DelayTrain>yes</DelayTrain>
+				<ClockedBy>self</ClockedBy>
+        <SelfClockPeriod>0.0000125</SelfClockPeriod>
+				<GroupNumber>0</GroupNumber>
+				<ChannelCount>1</ChannelCount>
+				<Scale>5</Scale>
+				<ResolutionBits>1</ResolutionBits>
+			</TimingGroupData><Channel expanded="1">
+				<Name/>
+				<ChannelName>RIO_DelayTrain</ChannelName>
+				<Comments>Triggers update of synchronous commands on FPGA RIO board</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>0</TimingGroup>
+				<TimingGroupIndex>0</TimingGroupIndex>
+				<ConnectsTo/>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+      </Channel><TimingGroupData expanded="1">
+        <Name>PXI1Slot6/ao0:31</Name>
+				<Description>PXI-6723 - 32 output analog board, -10/+10V 13-bit output resolution, timing resolution 20us </Description>
+				<ClockedBy>/PXI1Slot2/PFI1</ClockedBy>
+				<GroupNumber>2</GroupNumber>
+				<ChannelCount>32</ChannelCount>
+				<Scale>20</Scale>
+				<ResolutionBits>13</ResolutionBits>
+        <ClockPeriod>0.02</ClockPeriod>
+			</TimingGroupData><Channel expanded="1">
+				<Name/>
+				<ChannelName>Channel1</ChannelName>
+				<Comments>Triggers update of synchronous commands on FPGA RIO board</Comments>
+				<TimingSysChannel/>
+				<TimingGroup>2</TimingGroup>
+				<TimingGroupIndex>4</TimingGroupIndex>
+				<ConnectsTo/>
+				<Group/>
+				<HoldingValue/>
+				<Calibration/>
+				<MinValue/>
+				<Maxvalue/>
+				<MaxDuty/>
+				<MaxDuration/>
+				<MaxTriggers/>
+      </Channel><TimingGroupData expanded="1">
+        <Name>PXI1Slot7/ao0:7</Name>
+				<Description>PXI-6723 - 8 output analog board, -10/+10V 16-bit output resolution, timing resolution 2us </Description>
+				<ClockedBy>/PXI1Slot2/PFI2</ClockedBy>
+				<GroupNumber>3</GroupNumber>
+				<ChannelCount>8</ChannelCount>
+				<Scale>20</Scale>
+				<ResolutionBits>16</ResolutionBits>
+        <ClockPeriod>0.002</ClockPeriod>
+			</TimingGroupData><TimingGroupData expanded="1">
+        <Name>PXI1Slot8/ao0:7</Name>
+				<Description>PXI-6723 - 8 output analog board, -10/+10V 16-bit output resolution, timing resolution 2us </Description>
+				<ClockedBy>/PXI1Slot2/PFI3</ClockedBy>
+				<GroupNumber>4</GroupNumber>
+				<ChannelCount>8</ChannelCount>
+				<Scale>20</Scale>
+				<ResolutionBits>16</ResolutionBits>
+        <ClockPeriod>0.002</ClockPeriod>
+			</TimingGroupData></ChannelMap>	                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
+    
+  </head><body expanded="1">
+    <Sequence expanded="1">
+	<Name>Primary</Name>
+      <EndTime>500</EndTime>
+    <SubSequence expanded="1">
+		<StartTime>100</StartTime>
+        <Name>Primary Subsequence</Name>
+		<Description/>
+		<Caption/>
+        <Edge expanded="1">
+			<Name/>
+			<OnChannel>Channel1</OnChannel>
+			<Time>100</Time>
+			<Value>1</Value>
+		</Edge>
+        <Edge>
+			<Name/>
+			<OnChannel>Channel1</OnChannel>
+			<Time>150</Time>
+			<Value>0</Value>
+		</Edge><Edge>
+			<Name/>
+			<OnChannel>Channel2</OnChannel>
+			<Time>50</Time>
+			<Value>1</Value>
+		</Edge><Edge>
+			<Name/>
+			<OnChannel>Channel2</OnChannel>
+			<Time>100</Time>
+			<Value>0</Value>
+		</Edge></SubSequence>
+    </Sequence>
+  </body>
+  
+  
+    
+</XTSM>
