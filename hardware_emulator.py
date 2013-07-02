@@ -317,6 +317,7 @@ class DO_Emulator:
         output_values.append(hardware_emulator.analog1.channel_values)
         output_values.append(hardware_emulator.analog2.channel_values)
         output_values.append(hardware_emulator.analog3.channel_values)
+        output_values = np.array(output_values)
         # Set new digital values as previous values for the next run.
         self.previous_values = digital_values
 
@@ -456,19 +457,18 @@ class FPGA_Emulator:
             else:  # Delay.
                 delay_counter -= 1
             # End the sequence if the elapsed time is greater than the experiment's run time.
-            if elapsed_time >= run_time:
+            if elapsed_time >= (run_time):
                 break
         # Turn the update times into a 1D numpy array.
         numpy_updates = np.array(update_times, dtype = 'float')
         # Turn the output values into a 2D array.
         numpy_output = np.array(output_array)
         # Transpose output array so that rows = channels, columns = times(, and value = channel voltage at a given time).
-        numpy_output = numpy_output.T
         pdb.set_trace()        
         
     def clock_sync(self):
         """
-        Sends out a "pulse" on each channel if the channel's value is a 1.
+        Sends out a "pulse" on each channel if the channel's value is a 1 (aka 'on').
         
         Current hardware setup:
         Channel 0 --> DO board 'PXI1Slot2/port0:3' (hardware_emulator.digital1)
@@ -614,7 +614,6 @@ class Hardware_Emulator:
         connection.send(transferdata)
         # Get response and print results.
         response = connection.getresponse()
-        pdb.set_trace()
         response.status
         response.reason
         datastream = response.read()
