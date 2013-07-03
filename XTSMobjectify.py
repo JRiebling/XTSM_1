@@ -433,9 +433,9 @@ class ParserOutput(gnosis.xml.objectify._XO_,XTSM_core):
         """
         try: 
             headerLength=80
-            length=sum([(cd.ControlArray.timingstring).shape[0] for cd in self.ControlData])
+            bodyLength=sum([(cd.ControlArray.timingstring).shape[0] for cd in self.ControlData])
             num_tg=len(self.ControlData)
-            ts=numpy.empty(length+num_tg*headerLength+1,dtype=numpy.uint8)
+            ts=numpy.empty(bodyLength+num_tg*headerLength+1,dtype=numpy.uint8)
             ts[0]=num_tg            
             hptr=1
             ptr=headerLength*num_tg + 1
@@ -444,6 +444,12 @@ class ParserOutput(gnosis.xml.objectify._XO_,XTSM_core):
                 hptr+=headerLength
                 ts[ptr:ptr+cd.ControlArray.timingstring.shape[0]] = cd.ControlArray.timingstring
                 ptr+=cd.ControlArray.timingstring.shape[0]
+            # Add in length of entire string to begininning.
+            try:
+                totalLength = ts.shape
+                tl=numpy.asarray(totalLength, dtype=numpy.uint64).view('u1')
+                ts=numpy.concatenate((tl, ts))
+            except OverflowError: return ""  # Overflow error means length of ts is greater than 8 byte integer.
         except AttributeError: return ""
         return ts
 
