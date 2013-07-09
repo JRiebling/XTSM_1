@@ -75,7 +75,7 @@ def sparse_to_dense_conversion(bytes_per_value, num_channels, num_updates, datal
     """
     Makes use of SCAtoDCA.dll to undergo sparse-to-dense conversions.
     """
-    sparse_to_dense_convert = ctypes.CDLL('C:\\Users\\User\\Documents\\Visual Studio 2010\\Projects\\SCAtoDCA\\x64\\Release\\SCAtoDCA.dll')
+    sparse_to_dense_convert = ctypes.CDLL('C:\\wamp\\www\\MetaViewer\\SCAtoDCA\\SCAtoDCA.dll')
     sdc = sparse_to_dense_convert
     """
     The following three lines are to make the functions be recognized as doubles instead of ints, which is the default in python.
@@ -197,8 +197,10 @@ def expand_channels(timingarray, num_channels):
     
     Returned array is numpy array.
     """
-    timingarray = np.uint8(timingarray)
-    expanded_array = np.unpackbits(timingarray, axis = 0)
+    new_array = []
+    new_array.append(timingarray)
+    new_array = np.uint8(new_array)
+    expanded_array = np.unpackbits(new_array, axis = 0)
     return expanded_array
 
 def clock(emulator):
@@ -350,12 +352,10 @@ class DI_Emulator:
 class FPGA_Emulator:
     def __init__(self):
         # Indicates that the Emulator initially has no timingstring assigned to it.
-        has_sync = False
-        has_delaytrain = False
-        self.has_sync = has_sync
-        self.has_delaytrain = has_delaytrain
+        has_timingstring = False
+        self.has_timingstring = has_timingstring
         
-    def populate(self, timing_group, name):
+    def populate(self, timing_group):
         """
         Classifies incoming data by what type it is (eg. delay train, sync commands, etc.)
         Finds the header info from the group timingstring and creates a timingarray based on the timingstring's body.
@@ -367,15 +367,7 @@ class FPGA_Emulator:
         timingarray = []
         self.timingarray = timingarray
         # Assign to delay or sync based on the timing group's name.
-        if name == 'delay':
-            self.create_delaytrain()
-        elif name == 'sync':
-            populate_group(self)
-            self.sync_group = self.timing_group
-            # Sync command should be expanded into 8 channels.
-            self.syncarray = expand_channels(self.timingarray, 8)
-        else:
-            print 'ERROR: How did you manage to get here? (FPGA populate name)'
+        self.create_delaytrain()
 
     def create_delaytrain(self):
         """
@@ -395,15 +387,18 @@ class FPGA_Emulator:
         group_info = {'timing_group_length':timing_group_length, 'num_channels':num_channels, 'bytes_per_value':bytes_per_value,
                        'bytes_per_repeat':bytes_per_repeat, 'updates':num_updates, 'body':body}
         self.timing_group.update(group_info)
-        self.delay_group = self.timing_group
         # Create delay train from body.
         delaystring_length = bytes_to_integer(body, 0, 3)
         delaystring = body[4:]
+        syncarray = []
         dtrain = []
         # Every bytes_per_repeat bytes, group the bytes to form an integer number of delays until the next pulse.
         for start_index in range(0, delaystring_length, bytes_per_repeat):
-            dtrain.append(bytes_to_integer(delaystring, start_index, start_index + (bytes_per_repeat - 1)))
+            syncarray.append(delaystring[start_index])
+            dtrain.append(bytes_to_integer(delaystring, (start_index + 4), start_index + (bytes_per_repeat - 1)))
+        self.syncarray = expand_channels(syncarray, 8)
         self.delaytrain = dtrain
+        pdb.set_trace()
 
     def run_sequence(self, hardware_emulator):
         """
@@ -437,7 +432,7 @@ class FPGA_Emulator:
         # Gets added to the output_array after each clock pulse, aka 'unit_time'.
         output_array = []
         # The delay train's inverted clock frequency serves as our basic unit of time.
-        unit_time = 1.0/self.delay_group['clock_frequency']  # Seconds
+        unit_time = 1.0/self.timing_group['clock_frequency']  # Seconds
         # Set the first delay counter.
         delay_counter = self.delaytrain.pop(0)
         # Every unit time, clock the FPGA emulator. If the FPGA emulator is not on a delay, return output values.
@@ -624,7 +619,11 @@ class Hardware_Emulator:
         datalist = []
         for elem in datastream:
             datalist.append(ord(elem))
+        datalist_length = datalist[:8]
+        datalist = datalist[8:]
         self.datalist = datalist
+        self.datalist_length = datalist_length
+        pdb.set_trace()
 
     def fragment_data(self):
         """
@@ -710,16 +709,7 @@ class Hardware_Emulator:
                 name = group['timing_group_name']
                 group_assigned = False
                 # Look at the available emulators of each type, check if they have a timing string already, and assign new timing group to first empty emulator of its type.
-                if device == 0 and name == 'RIO01/sync': # FPGA synchronous commands.
-                    for emulator in self.fpga:
-                        if (not emulator.has_sync) and (not group_assigned):
-                                # Send timing group to emulator.
-                                emulator.populate(group, 'sync')
-                                # Stops the emulator from accepting any more timing groups.
-                                emulator.has_sync = True
-                                # Stops the timing group from being assigned to any other emulators.
-                                group_assigned = True
-                elif device == 0 and name == 'PXI1Slot2/port0:3': # Digital output
+                if device == 0: # Digital output
                     for emulator in self.do:
                         if (not emulator.has_timingstring) and (not group_assigned):
                             # Send timing group to emulator.
@@ -757,9 +747,9 @@ class Hardware_Emulator:
                             group_assigned = True
                 elif device == 4: # FPGA delay train.
                     for emulator in self.fpga:
-                        if (not emulator.has_delaytrain) and (not group_assigned):
+                        if (not emulator.has_timingstring) and (not group_assigned):
                             # Send timing group to emulator.
-                            emulator.populate(group, 'delay')
+                            emulator.populate(group)
                             # Stops the emulator from accepting any more timing groups.
                             emulator.has_timingstring = True
                             # Stops the timing group from being assigned to any other emulators.
