@@ -1363,7 +1363,7 @@ class XTSM_Object(object):
                 except IOError: InvalidSource(source)
         self.XTSM = gnosis.xml.objectify.make_instance(source)
         
-    def parse(self,shotnumber=0):
+    def parse(self, shotnumber = 0):
         """
         parses the appropriate sequence, given a shotnumber (defaults to zero)
         - THIS IS A TOPLEVEL ROUTINE FOR THE PARSER
@@ -1371,6 +1371,146 @@ class XTSM_Object(object):
         self.XTSM.insert(Parameter(u'shotnumber',str(shotnumber)))
         parserOutput=self.XTSM.body[0].parseActiveSequence()
         return parserOutput
+
+class Command_Library:
+    """
+    Houses a list of commands for pre/post parsing instructions.
+    
+    Note: Any functions which require additional values beyond "self" and "xtsm_obj" 
+        should receive them all as a single variable, aka a 1D array of extra variables.
+    """
+    def __init__(self):
+        pass
+    
+    def combine_timingstring(self, XTSM_obj):
+        """
+        Combines the sync and delay train timingstrings. This is a quick fix, and therefore not very general at all.
+        """
+        for group in range(len(XTSM_obj.ControlData)):
+            # First get the sync and delay groups.
+            if int(XTSM_obj.ControlData[group].GroupNumber.PCDATA) == 5:
+                sync_group = XTSM_obj.ControlData[group]
+                sync_group_num = group
+            elif int(XTSM_obj.ControlData[group].GroupNumber.PCDATA) == 0:
+                delay_group = XTSM_obj.ControlData[group]
+        # Get the timingstring for each group, then get a list of all the values for each group.
+        sync_string = sync_group.ControlArray.timingstring.tolist()
+        sync_body = sync_string[19:]
+        sync_bpv = sync_string[9]
+        sync_bpr = sync_string[10]
+        sync_values = []
+        for i in range(0, len(sync_body), (sync_bpv + sync_bpr)):
+            sync_values.append(sync_body[i:(i+sync_bpv)])
+        delay_string = delay_group.ControlArray.timingstring.tolist()
+        delay_head = delay_string[:15]
+        delay_body = delay_string[19:]
+        delay_bpv = delay_string[9]
+        delay_bpr = delay_string[10]
+        delay_values = []
+        # Note: For the delay train, the repeats are the "values".
+        for i in range(0, len(delay_body), (delay_bpv + delay_bpr)):
+            delay_values.append(delay_body[i:(i+delay_bpr)])
+        # Now combine the values of each timingstring together, putting filler in the middle so that the result is 8 bytes per "value".
+        new_values = []
+        for i in range(len(sync_values)):
+            new_val = sync_values[i] + [0, 0, 0] + delay_values[i]
+            new_values += new_val
+        new_body_length = numpy.array([len(new_values)], dtype="<u4").view("<u1").tolist()
+        new_string_length = numpy.array([len(new_values) + 19], dtype="<u8").view("<u1").tolist()
+        new_string = numpy.array((new_string_length + delay_head[8:] + new_body_length + new_values), dtype="uint8")
+        # Set bytes per repeat to 8, then set this new timingstring as the timingstring for the delay train group.
+        new_string[10] = 8
+        delay_group.ControlArray.timingstring = new_string
+        # Finally, delete the now-useless sync group.
+        del XTSM_obj.ControlData[sync_group_num]
+    
+    def combine_timingstrings(self, XTSM_obj, params):
+        """
+        Creates a new timing group with a combination of two group's timing strings, assuming they have the same number of updates.
+        Required params: Timinggroup 1 name, Timinggroup 2 name, Group char.
+        The new timing group's timingstring will append values from the second group's timingstring onto the end of the first.
+        The new timing group's characteristings will mimic the characteristics of the timing group name listed here.
+        
+        Optional params: repeats, length of byte, position of filler, new group name, delete group 1, delete group 2, additional param name : value.
+        Repeats is an integer that must be less than or equal to the number of bytes_per_repeat for both groups. Must be used
+            if the two groups do not have the same bytes_per_repeat value.
+        Length of byte is an integer that must be greater than or equal to the combined length of a value from both original timing groups.
+            Default is equal to the combined length of the two elements.
+        Position of filler must be "beginning", "middle", or "end". Default is "end".
+        New group name is a string. Default is a combination of the two original names.
+        Delete group 1 and 2 are both boolean values. If True, that group will be deleted after adding in new data. Default is True.
+        Additional parameters will be added to the new timing group's dictionary as-is.
+        """
+        pdb.set_trace()
+        
+    def test2(self, XTSM_obj):
+        try:
+            print XTSM_obj.XTSM.nose
+        except:
+            print 'Does not have attr "nose"'
+            XTSM_obj.XTSM.addAttribute('nose', 5)
+    
+    def add_to_beginning(self, XTSM_obj):
+        #XTSM_obj.ControlData['Group Number'].ControlArray.timingstring
+        pdb.set_trace()
+
+def preparse(xtsm_obj):
+    """
+    Executes functions before parsing the XTSM code.
+    """
+    xtsm_obj.Command_Library = Command_Library()
+    for command in xtsm_obj.XTSM.head.PreParseInstructions.ParserCommand:
+        try:
+            # Check if the command exists in the Command Library. If so, execute it.
+            command_name = getattr(xtsm_obj.Command_Library, str(command.Name.PCDATA))
+            command_vars = []
+            try:
+                # Check for values to go with the command.
+                non_blank_var = False
+                for var in command.Value:
+                    command_vars.append(var.PCDATA)
+                    if var.PCDATA != None:
+                        non_blank_var = True
+                if non_blank_var:
+                    command_name(xtsm_obj, command_vars)
+                else:
+                    command_name(xtsm_obj)
+            except:
+                command_name(xtsm_obj)
+        except AttributeError:
+            # If the command field is not blank, print missing command error.
+            if command.Name.PCDATA != None:
+                print 'Missing command function: ' + command.Name.PCDATA
+
+def postparse(timingstring):
+    """
+    Executes functions after parsing the XTSM code.
+    """
+    timingstring.Command_Library = Command_Library()
+    timingstring.XTSM = timingstring.__parent__.__parent__.__parent__
+    for command in timingstring.XTSM.head.PostParseInstructions.ParserCommand:
+        try:
+            # Check if the command exists in the Command Library. If so, execute it.
+            command_name = getattr(timingstring.Command_Library, str(command.Name.PCDATA))
+            command_vars = []
+            try:
+                # Check for values to go with the command.
+                non_blank_var = False
+                for var in command.Value:
+                    command_vars.append(var.PCDATA)
+                    if var.PCDATA != None:
+                        non_blank_var = True
+                if non_blank_var:
+                    command_name(timingstring, command_vars)
+                else:
+                    command_name(timingstring)
+            except:
+                command_name(timingstring)
+        except AttributeError:
+            # If the command field is not blank, print missing command error.
+            if command.Name.PCDATA != None:
+                print 'Missing command function: ' + command.Name.PCDATA
+        
         
 # module initialization
 # override the objectify default class
