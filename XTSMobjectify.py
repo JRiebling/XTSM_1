@@ -1,7 +1,7 @@
 """
 This software is described in detail at https://amo.phys.psu.edu/GemelkeLabWiki/index.php/Python_parser
 
-What is next:
+What can be next:
         fix problem with appending edges after last interval (line 550) 
         add an XTSM feature for maximum repeat length and implement parsing; also 0 byteperrepeat for repasints?
         Error: objectify doesn't define a class if it's not in the <XTSM> to begin with
@@ -1382,77 +1382,110 @@ class Command_Library:
     def __init__(self):
         pass
     
-    def combine_timingstring(self, XTSM_obj):
+    def combine_with_delaytrain(self, XTSM_obj, params):
         """
-        Combines the sync and delay train timingstrings. This is a quick fix, and therefore not very general at all.
-        """
-        for group in range(len(XTSM_obj.ControlData)):
-            # First get the sync and delay groups.
-            if int(XTSM_obj.ControlData[group].GroupNumber.PCDATA) == 5:
-                sync_group = XTSM_obj.ControlData[group]
-                sync_group_num = group
-            elif int(XTSM_obj.ControlData[group].GroupNumber.PCDATA) == 0:
-                delay_group = XTSM_obj.ControlData[group]
-        # Get the timingstring for each group, then get a list of all the values for each group.
-        sync_string = sync_group.ControlArray.timingstring.tolist()
-        sync_body = sync_string[19:]
-        sync_bpv = sync_string[9]
-        sync_bpr = sync_string[10]
-        sync_values = []
-        for i in range(0, len(sync_body), (sync_bpv + sync_bpr)):
-            sync_values.append(sync_body[i:(i+sync_bpv)])
-        delay_string = delay_group.ControlArray.timingstring.tolist()
-        delay_head = delay_string[:15]
-        delay_body = delay_string[19:]
-        delay_bpv = delay_string[9]
-        delay_bpr = delay_string[10]
-        delay_values = []
-        # Note: For the delay train, the repeats are the "values".
-        for i in range(0, len(delay_body), (delay_bpv + delay_bpr)):
-            delay_values.append(delay_body[i:(i+delay_bpr)])
-        # Now combine the values of each timingstring together, putting filler in the middle so that the result is 8 bytes per "value".
-        new_values = []
-        for i in range(len(sync_values)):
-            new_val = sync_values[i] + [0, 0, 0] + delay_values[i]
-            new_values += new_val
-        new_body_length = numpy.array([len(new_values)], dtype="<u4").view("<u1").tolist()
-        new_string_length = numpy.array([len(new_values) + 19], dtype="<u8").view("<u1").tolist()
-        new_string = numpy.array((new_string_length + delay_head[8:] + new_body_length + new_values), dtype="uint8")
-        # Set bytes per repeat to 8, then set this new timingstring as the timingstring for the delay train group.
-        new_string[10] = 8
-        delay_group.ControlArray.timingstring = new_string
-        # Finally, delete the now-useless sync group.
-        del XTSM_obj.ControlData[sync_group_num]
-    
-    def combine_timingstrings(self, XTSM_obj, params):
-        """
-        Creates a new timing group with a combination of two group's timing strings, assuming they have the same number of updates.
-        Required params: Timinggroup 1 name, Timinggroup 2 name, Group char.
-        The new timing group's timingstring will append values from the second group's timingstring onto the end of the first.
-        The new timing group's characteristings will mimic the characteristics of the timing group name listed here.
+        POST PARSE COMMAND ONLY
         
-        Optional params: repeats, length of byte, position of filler, new group name, delete group 1, delete group 2, additional param name : value.
-        Repeats is an integer that must be less than or equal to the number of bytes_per_repeat for both groups. Must be used
-            if the two groups do not have the same bytes_per_repeat value.
-        Length of byte is an integer that must be greater than or equal to the combined length of a value from both original timing groups.
-            Default is equal to the combined length of the two elements.
-        Position of filler must be "beginning", "middle", or "end". Default is "end".
-        New group name is a string. Default is a combination of the two original names.
-        Delete group 1 and 2 are both boolean values. If True, that group will be deleted after adding in new data. Default is True.
-        Additional parameters will be added to the new timing group's dictionary as-is.
+        Combines one or more timing groups with the delay train. Must have the same number of updates as the delay train. Final group will take the place of the delay train and delete all others.
+        Required params: Timing Groups Names.
+            The Timing Group Names should all be strings. Timing string values will be appended in the order that
+            the timing groups are input. Must include a delay train.
+        Optional params: Length per Value, Length of Filler, Position of Filler
+            Length per Value is an integer representing the number of bytes each end-value should be. Default is the length of the original values combined with no filler.
+                Note: If this field is shorter than the combined length of the original values, this field will be ingored.
+                (Ex: Sync has values == 1 byte, Delaytrain has "values" == 4 bytes. Hence, Length per value has a default value of 5 and must be >= 5.)
+            Position of Filler should only be present if Length per Value > end-value length. This specifies the index at which filler will be placed.
+                If unspecified, all filler will be placed at the end of the end-value.
+                (Ex: Sync, Filler, Delaytrain has Position of filler == 1, since Sync takes the 0th position.)
+            Length of Filler should be an integer number of bytes for the first filler. This variable should only be present if directly preceeded by a Position of Filler variable.
+                If unspecified, will take on the largest possible filler length.
+            Note: This Position of Filler/Length of Filler cycle can repeated. Each pair is executed sequentially.
         """
+        # File params as either a timing group or a filler number.
+        timing_group_names = []
+        filler_info = []
+        for param in params:
+            if param != None:  # Ignore blank params.
+                try:  # If the param can be expressed as an integer, then it's not a timing group name.
+                    filler_info.append(int(param))
+                except ValueError:
+                    timing_group_names.append(str(param))
+        # Gets relevant information (such as bytes_per_value, or bpv) from each group. The delay group is handled differently from the other groups.
+        control_num = []
+        timingstring_values = []
+        value_size = 0
+        for tg_name in timing_group_names:
+            for k in range(len(XTSM_obj.ControlData)):
+                ControlData = XTSM_obj.ControlData[k]
+                if str(ControlData.ControlArray.tGroupNode.Name._seq[0]) == tg_name:
+                    control_num.append(k)
+                    # Now get the values for each timing group.
+                    tg_string = ControlData.ControlArray.timingstring.tolist()
+                    tg_body = tg_string[19:]
+                    tg_bpr = tg_string[10]
+                    tg_values = []
+                    if hasattr(ControlData.ControlArray.tGroupNode, "DelayTrain"):
+                        dControlData = ControlData
+                        num_updates = numpy.array(tg_string[11:15], dtype = "uint8").view("uint32")
+                        value_size += tg_bpr
+                        # Note: For the delay train, the repeats are the "values".
+                        for i in range(0, len(tg_body), (tg_bpr)):
+                            tg_values.append(tg_body[i:(i+tg_bpr)])
+                    else:
+                        tg_bpv = tg_string[9]
+                        value_size += tg_bpv
+                        for i in range(0, len(tg_body), (tg_bpv + tg_bpr)):
+                            tg_values.append(tg_body[i:(i+tg_bpv)])
+                    timingstring_values.append(tg_values)
+        # Now that the data is extracted, delete the old timing groups.
+        control_num.sort()
+        control_num.reverse()  # List is sorted and reversed so as to not mess up the indeces of higher entries by deleting a lower entry.
+        for i in control_num:
+            del XTSM_obj.ControlData[i]
+        # Find the max value size, if specified.
+        if filler_info:
+            max_size = filler_info.pop(0)
+        else:
+            max_size = value_size
+        # If the max value size is larger than the current value size, look for filler pos/len pairs. Then place filler in the designated (or default) position.
+        while value_size < max_size:
+            try:
+                filler_pos = filler_info.pop(0)
+                try:
+                    filler_len = filler_info.pop(0)
+                except:
+                    filler_len = max_size - value_size
+            except:
+                filler_pos = len(timingstring_values)
+                filler_len = max_size - value_size
+            # Insert a new column with only one element at the filler position. This element has the filler length as its value.
+            timingstring_values.insert(filler_pos, [filler_len])
+            value_size += filler_len
         pdb.set_trace()
-        
-    def test2(self, XTSM_obj):
-        try:
-            print XTSM_obj.XTSM.nose
-        except:
-            print 'Does not have attr "nose"'
-            XTSM_obj.XTSM.addAttribute('nose', 5)
-    
-    def add_to_beginning(self, XTSM_obj):
-        #XTSM_obj.ControlData['Group Number'].ControlArray.timingstring
+        # Joins next timingstring array in timingstring_values to the previous one. If the next array is a filler, create a zero array with dimensions specified by the number of updates and the filler length.
+        for group_values in timingstring_values:
+            if len(group_values) == 1:
+                try:
+                    newstring_body = numpy.concatenate((newstring_body, numpy.zeros((num_updates[0], group_values[0]), dtype = "uint8")), axis = 1)
+                except NameError:
+                    newstring_body = numpy.zeros((num_updates[0], group_values[0]), dtype = "uint8")
+            else:
+                try:
+                    newstring_body = numpy.concatenate((newstring_body, numpy.array(group_values, dtype = "uint8")), axis = 1)
+                except NameError:
+                    newstring_body = numpy.array(group_values, dtype = "uint8")
+        # Flatten the new array so that it's a 1D array of values.
+        newstring_body = newstring_body.flatten()
         pdb.set_trace()
+        # Reconstruct a new header, given the string length, number of channels (1), bytes_per_value (0), bytes_per_repeat (value_size), num_updates, and body length.
+        body_length = newstring_body.shape[0]
+        string_length = body_length + 19
+        newstring = numpy.concatenate((numpy.array([string_length], dtype = "<u8").view("<u1"), numpy.array([1,0,value_size], dtype = "<u1"), numpy.array([num_updates, body_length], dtype = "<u4").view("<u1"), newstring_body))
+        pdb.set_trace()
+        # Replace the delay train's timingstring with the new timingstring. Then send the new delay train data back to the XTSM object.
+        dControlData.ControlArray.timingstring = newstring
+        XTSM_obj.ControlData.append(dControlData)
+
 
 def preparse(xtsm_obj):
     """
